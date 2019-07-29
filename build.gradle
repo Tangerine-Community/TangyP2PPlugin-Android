@@ -16,7 +16,6 @@
    under the License.
 */
 
-
 buildscript {
     repositories {
         google()
@@ -33,7 +32,7 @@ buildscript {
 }
 
 plugins {
-    id "com.palantir.git-version" version "0.12.0-rc2"
+    id 'com.gladed.androidgitversion' version '0.4.9'
 }
 
 
@@ -50,12 +49,11 @@ allprojects {
     }
 }
 
+//apply plugin: 'java'
 apply plugin: 'com.android.library'
 apply plugin: 'com.github.dcendents.android-maven'
 apply plugin: 'com.jfrog.bintray'
-apply plugin: "com.palantir.git-version"
 
-version gitVersion()
 group = 'org.apache.cordova'
 version = '8.1.0-dev'
 
@@ -71,6 +69,8 @@ android {
     // For the Android Cordova Lib, we will hardcode the minSdkVersion and not allow changes.
     defaultConfig {
         minSdkVersion 19
+        versionName androidGitVersion.name()
+        versionCode androidGitVersion.code()
     }
 
     sourceSets {
