@@ -2,10 +2,14 @@ package org.drulabs.localdash.transfer;
 
 /**
  * Authored by KaushalD on 8/28/2016.
+ * Big change here.
+ *
+ *
+ *
  */
 public interface TransferConstants {
 
-    int INITIAL_DEFAULT_PORT = 8998;
+    int INITIAL_DEFAULT_PORT = 8080;
 
     int CLIENT_DATA = 3001;
     int CLIENT_DATA_WD = 3003;
@@ -24,4 +28,5 @@ public interface TransferConstants {
     String KEY_DEVICE_STATUS = "devicestatus";
     String KEY_USER_NAME = "username";
     String KEY_WIFI_IP = "wifiip";
+
 }

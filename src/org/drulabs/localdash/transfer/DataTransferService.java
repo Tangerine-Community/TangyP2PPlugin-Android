@@ -15,16 +15,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.Socket;
+
 
 
 public class DataTransferService extends IntentService {
 
     private static final int SOCKET_TIMEOUT = 5000;
-    public static final String ACTION_SEND_FILE = "org.drulabs.localdash.SEND_FILE";
-    public static final String ACTION_SEND_DATA = "org.drulabs.localdash.SEND_DATA";
+    public static final String ACTION_SEND_FILE = "org.rti.tangerine.p2p.SEND_FILE";
+    public static final String ACTION_SEND_DATA = "org.rti.tangerine.p2p.SEND_DATA";
 
     public static final String EXTRAS_FILE_PATH = "file_url";
     public static final String DEST_IP_ADDRESS = "host";
@@ -33,6 +32,9 @@ public class DataTransferService extends IntentService {
 
 //    public static final int SERVER_ONLY = 8999;
 //    public static final int CLIENT_SERVER = 8999;
+
+    private static final String TAG = "TangyP2PPlugin:DTS";
+
 
     public DataTransferService(String name) {
         super(name);
@@ -93,6 +95,8 @@ public class DataTransferService extends IntentService {
                 ObjectOutputStream oos = new ObjectOutputStream(outputStream);
                 oos.writeObject(transferObject);
                 oos.close();
+//                TangyP2PPlugin.sendPluginMessage("Data transferred", true, context);
+                Log.d(TAG, "Client: Sent data to " + host);
 
             } catch (IOException e) {
                 Log.e("DXDX", "Device: " + Build.MANUFACTURER);

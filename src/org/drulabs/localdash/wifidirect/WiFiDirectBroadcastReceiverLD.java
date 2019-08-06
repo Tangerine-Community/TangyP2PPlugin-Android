@@ -29,27 +29,28 @@ import android.util.Log;
 //import org.drulabs.localdash.LocalDashWiFiDirect;
 import org.apache.cordova.PluginResult;
 import org.drulabs.localdash.transfer.DataSender;
+import org.drulabs.localdash.transfer.TransferConstants;
 import org.drulabs.localdash.utils.Utility;
 import org.rti.tangerine.p2p.TangyP2PPlugin;
 
 /**
  * A BroadcastReceiver that notifies of important wifi p2p events.
  */
-public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
+public class WiFiDirectBroadcastReceiverLD extends BroadcastReceiver {
 
     private WifiP2pManager manager;
     private Channel channel;
 //    private LocalDashWiFiDirect activity;
     private TangyP2PPlugin activity;
 
-    private static final String TAG = "WiFiDirectReceiver";
+    private static final String TAG = "TangyP2P: WDtReceiver";
 
     /**
      * @param manager  WifiP2pManager system service
      * @param channel  Wifi p2p channel
      * @param activity activity associated with the receiver
      */
-    public WiFiDirectBroadcastReceiver(WifiP2pManager manager, Channel channel,
+    public WiFiDirectBroadcastReceiverLD(WifiP2pManager manager, Channel channel,
                                        TangyP2PPlugin activity) {
         super();
         this.manager = manager;
@@ -98,17 +99,19 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
             WifiP2pInfo p2pInfo = intent
                     .getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_INFO);
             String goAddress = "";
+            int goPort = -1;
             if (p2pInfo != null && p2pInfo.groupOwnerAddress != null) {
                 goAddress = Utility.getDottedDecimalIP(p2pInfo.groupOwnerAddress
                         .getAddress());
+                goPort = TransferConstants.INITIAL_DEFAULT_PORT;
                 boolean isGroupOwner = p2pInfo.isGroupOwner;
-                Log.i(TAG,"WIFI_P2P_CONNECTION_CHANGED_ACTION: owner address" + goAddress + " isGroupOwner: " + isGroupOwner);
+                Log.i(TAG,"WIFI_P2P_CONNECTION_CHANGED_ACTION: owner address: " + goAddress + " isGroupOwner: " + isGroupOwner);
             }
             if (networkInfo.isConnected()) {
                 // we are connected with the other device, request connection
                 // info to find group owner IP
-                Log.i(TAG,"WIFI_P2P_CONNECTION_CHANGED_ACTION: isConnected: " + networkInfo.isConnected() + " to address: " + goAddress);
-                String pluginMessage = "We connected to: " + goAddress;
+                Log.d(TAG,"WIFI_P2P_CONNECTION_CHANGED_ACTION: isConnected: " + networkInfo.isConnected() + " to address: " + goAddress);
+                String pluginMessage = "We are connected to: " + goAddress;
 //                Log.i(TAG, pluginMessage);
                 PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, pluginMessage);
                 pluginResult.setKeepCallback(true);
@@ -117,6 +120,7 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
 //                Uri imageUri = data.getData();
 //                DataSender.sendFile(LocalDashWiFiDirect.this, selectedDevice.getIp(),
 //                        selectedDevice.getPort(), imageUri);
+                DataSender.sendChatRequest(context, goAddress, goPort);
             } else {
                 Log.i(TAG,"WIFI_P2P_CONNECTION_CHANGED_ACTION: disconnected - isConnected" + networkInfo.isConnected());
                 // It's a disconnect

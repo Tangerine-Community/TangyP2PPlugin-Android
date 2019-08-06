@@ -3,6 +3,7 @@ package org.drulabs.localdash.transfer;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.util.Log;
 
 import org.drulabs.localdash.model.ChatDTO;
 import org.drulabs.localdash.model.DeviceDTO;
@@ -13,6 +14,8 @@ import org.drulabs.localdash.utils.Utility;
  * Authored by KaushalD on 8/28/2016.
  */
 public class DataSender {
+
+    private static final String TAG = "TangyP2P: DataSender";
 
     public static void sendData(Context context, String destIP, int destPort, ITransferable data) {
         Intent serviceIntent = new Intent(context,
@@ -81,14 +84,14 @@ public class DataSender {
             transferData = TransferModelGenerator.generateDeviceTransferModelRequestWD
                     (currentDevice);
         }
-
         sendData(context, destIP, destPort, transferData);
     }
 
     public static void sendChatRequest(Context context, String destIP, int destPort) {
+        Log.d(TAG,"sendChatRequest: destIP: " + destIP + " to destPort: " + destPort);
         DeviceDTO currentDevice = new DeviceDTO();
         currentDevice.setPort(ConnectionUtils.getPort(context));
-        String playerName = Utility.getString(context, TransferConstants.KEY_USER_NAME);
+        String playerName     = Utility.getString(context, TransferConstants.KEY_USER_NAME);
         if (playerName != null) {
             currentDevice.setPlayerName(playerName);
         }

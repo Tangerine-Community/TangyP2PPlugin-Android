@@ -91,6 +91,9 @@ android {
         exclude 'META-INF/DEPENDENCIES'
         exclude 'META-INF/NOTICE'
     }
+
+//    files files('src/org/drulabs/localdash')
+//    tasks 'copyFiles'
 }
 
 install {
@@ -134,16 +137,32 @@ task copyPluginSource(type: Copy) {
     println 'Files copied!'
 }
 
-project.afterEvaluate {
-    preBuild.dependsOn copyPluginSource
+//task copyFiles {
+////    inputs.files 'src/org/rti/tangerine/p2p'
+//    inputs.files(fileTree('src/org/drulabs/localdash'))
+//    outputs.dir('../TangyP2PPlugin/src/android/org/drulabs/localdash')
+//    doLast {
+//        // do some stuff with files in 'src' folder
+//    }
+//}
+
+task copyFiles(type: Copy) {
+    from 'src/org/drulabs/localdash'
+    into '../TangyP2PPlugin/src/android/org/drulabs/localdash'
 }
 
-clean.dependsOn copyPluginSource
-clean.mustRunAfter copyPluginSource
+project.afterEvaluate {
+    preBuild.dependsOn copyPluginSource, copyFiles
+}
+
+clean.dependsOn copyPluginSource, copyFiles
+clean.mustRunAfter copyPluginSource, copyFiles
 
 dependencies {
     implementation 'com.android.support:localbroadcastmanager:28.0.0'
     implementation 'com.google.code.gson:gson:2.8.5'
+    implementation 'com.android.support:support-compat:28.0.0'
+    implementation 'org.nanohttpd:nanohttpd:2.3.1'
 }
 
 artifacts {
