@@ -20,15 +20,11 @@
 package org.rti.tangerine.p2p;
 
 import android.Manifest;
-import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.net.wifi.p2p.WifiP2pDevice;
-import android.net.wifi.p2p.WifiP2pManager;
-import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
-import android.support.annotation.NonNull;
 import android.util.Log;
+
+import androidx.annotation.NonNull;
 
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.nearby.Nearby;
@@ -66,7 +62,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
@@ -74,61 +69,17 @@ import java.util.Set;
 
 public class TangyP2PPlugin extends CordovaPlugin
 {
-    public static final String FIRST_DEVICE_CONNECTED = "first_device_connected";
-    public static final String KEY_FIRST_DEVICE_IP = "first_device_ip";
 
-    public static final String ACTION_CHAT_RECEIVED = "org.drulabs.localdash.chatreceived";
-    public static final String KEY_CHAT_DATA = "chat_data_key";
-
-    private static final String WRITE_PERMISSION = Manifest.permission.WRITE_EXTERNAL_STORAGE;
-    private static final int WRITE_PERM_REQ_CODE = 19;
 
     public static final String TAG = "TangyP2PPlugin";
-
-//    private ConnectionListener connListener;
-    private int myPort;
-
-    private boolean isConnectionListenerRunning = false;
-
-//    WifiP2pManager wifiP2pManager;
-//    WifiP2pManager.Channel wifip2pChannel;
-//    WiFiDirectBroadcastReceiver wiFiDirectBroadcastReceiver;
-    private boolean isWDConnected = false;
-    private String pluginMessage;
-
-    public static final int SEARCH_REQ_CODE = 0;
 
     public CallbackContext cbContext;
 
     public static final String PERMISSION_TO_WIFI = Manifest.permission.CHANGE_WIFI_STATE;
-//    public static final int PERMISSION_DENIED_ERROR = 20;
     private static final String PERMISSION_DENIED_ERROR = "Permission denied";
     String [] permissions = { PERMISSION_TO_WIFI };
 
     public PluginResult pluginResult;
-
-    private List<WifiP2pDevice> devices = new ArrayList<WifiP2pDevice>();
-    final HashMap<String, String> buddies = new HashMap<String, String>();
-//    private static final String SERVICE_INSTANCE = "Tangerine";
-//    private final String serviceName = SERVICE_INSTANCE + (int) (Math.random() * 1000);
-
-    WifiP2pDnsSdServiceRequest serviceRequest = null;
-    private String peerIP = null;
-    private int peerPort = -1;
-    private boolean initFileServer = false;
-
-    private static final int PERMISSIONS_REQUEST_CODE_ACCESS_COARSE_LOCATION = 1001;
-
-    private WifiP2pManager manager;
-    private boolean isWifiP2pEnabled = false;
-    private boolean retryChannel = false;
-
-    private final IntentFilter intentFilter = new IntentFilter();
-    private WifiP2pManager.Channel channel;
-    private BroadcastReceiver receiver = null;
-
-    private List<WifiP2pDevice> peers = new ArrayList<WifiP2pDevice>();
-    private WifiP2pDevice device;
 
     public HashMap<String, Object> responses;
     public NanoHTTPDWebserver nanoHTTPDWebserver;
@@ -239,6 +190,24 @@ public class TangyP2PPlugin extends CordovaPlugin
                 sendPluginMessage(message, true);
             }
             return true;
+        }
+        else if ("listenForTransfer".equals(action)) {
+            if (hasPermisssion()) {
+                Log.i(TAG, "We hasPermisssion");
+                cordova.getActivity().runOnUiThread(new Runnable() {
+                    public void run() {
+                        Log.i(TAG, "listenForTransfer");
+                        setState(State.SEARCHING);
+                    }
+                });
+                return true;
+            } else {
+                String message = "Requesting permissions";
+//                Log.i(TAG, message);
+                PermissionHelper.requestPermissions(this, 0, permissions);
+                sendPluginMessage(message, true);
+            }
+            return true;
         } else if ("startDiscovery".equals(action)) {
             if(hasPermisssion()) {
                 Log.i(TAG, "We hasPermisssion");
@@ -260,11 +229,15 @@ public class TangyP2PPlugin extends CordovaPlugin
                 cordova.getActivity().runOnUiThread(new Runnable() {
                     public void run() {
                         Log.i(TAG, "transferData");
-                        String hello = "Greetings from " + mName;
-                        Log.i(TAG, "sending: " + hello);
-                        byte[] helloBytes = hello.getBytes();
-//                            Payload bytesPayload = Payload.fromBytes(new byte[] {0xa, 0xb, 0xc, 0xd});
-                        Payload bytesPayload = Payload.fromBytes(helloBytes);
+                        String payloadString = "";
+                        try {
+                            payloadString = args.getString(0);
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                        sendPluginMessage("sending payloadString beginning with: " + payloadString.subSequence(0,30), true);
+                        byte[] payloadBytes = payloadString.getBytes();
+                        Payload bytesPayload = Payload.fromBytes(payloadBytes);
                         send(bytesPayload);
                     }
                 });
@@ -277,166 +250,6 @@ public class TangyP2PPlugin extends CordovaPlugin
         }
         return false;  // Returning false results in a "MethodNotFound" error.
     }
-
-//    static class ReceiveBytesPayloadListener extends PayloadCallback {
-//
-//        private CallbackContext cbContext;
-//
-//
-//        public ReceiveBytesPayloadListener(CallbackContext cbContext) {
-//            this.cbContext = cbContext;
-//        }
-//
-//        @Override
-//        public void onPayloadReceived(String endpointId, Payload payload) {
-//            // This always gets the full data of the payload. Will be null if it's not a BYTES
-//            // payload. You can check the payload type with payload.getType().
-//            byte[] receivedBytes = payload.asBytes();
-//            TangyP2PPlugin.sendPluginMessage("Data transfer initiated.", true, cbContext, TAG);
-//        }
-//
-//        @Override
-//        public void onPayloadTransferUpdate(String endpointId, PayloadTransferUpdate update) {
-//            // Bytes payloads are sent as a single chunk, so you'll receive a SUCCESS update immediately
-//            // after the call to onPayloadReceived().
-//            switch (update.getStatus()) {
-//                case PayloadTransferUpdate.Status.SUCCESS:
-//                    TangyP2PPlugin.sendPluginMessage("Data transfer completed! ", true, cbContext, TAG);
-//                    break;
-//                case PayloadTransferUpdate.Status.FAILURE:
-//                    TangyP2PPlugin.sendPluginMessage("Data transfer failure.", true, cbContext, TAG);
-//                    break;
-//                case PayloadTransferUpdate.Status.CANCELED:
-//                    TangyP2PPlugin.sendPluginMessage("Data transfer cancelled.", true, cbContext, TAG);
-//                    break;
-//                case PayloadTransferUpdate.Status.IN_PROGRESS:
-//                    // don't log, could be verbose.
-//                    break;
-//                default:
-//                    // Unknown status code
-//                    TangyP2PPlugin.sendPluginMessage("Data transfer update - unknown: " + update.getStatus(), true, cbContext, TAG);
-//            }
-//        }
-//    }
-
-//    private final ConnectionLifecycleCallback connectionLifecycleCallback =
-//            new ConnectionLifecycleCallback() {
-//                @Override
-//                public void onConnectionInitiated(String endpointId, ConnectionInfo connectionInfo) {
-//                    // Automatically accept the connection on both sides.
-//                    Context context = cordova.getActivity().getApplicationContext();
-//                    ReceiveBytesPayloadListener payloadCallback = new ReceiveBytesPayloadListener(cbContext);
-//                    Nearby.getConnectionsClient(context).acceptConnection(endpointId, payloadCallback);
-//                }
-//
-//                @Override
-//                public void onConnectionResult(String endpointId, ConnectionResolution result) {
-//                    switch (result.getStatus().getStatusCode()) {
-//                        case ConnectionsStatusCodes.STATUS_OK:
-//                            // We're connected! Can now start sending and receiving data.
-//                            sendPluginMessage("We're connected! Can now start sending and receiving data.", true);
-//                            String hello = "Greetings from " + mName;
-//                            byte[] helloBytes = hello.getBytes();
-////                            Payload bytesPayload = Payload.fromBytes(new byte[] {0xa, 0xb, 0xc, 0xd});
-//                            Payload bytesPayload = Payload.fromBytes(helloBytes);
-//                            Context context = cordova.getActivity().getApplicationContext();
-//                            Nearby.getConnectionsClient(context).sendPayload(endpointId, bytesPayload);
-//                            break;
-//                        case ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED:
-//                            // The connection was rejected by one or both sides.
-//                            sendPluginMessage("The connection was rejected by one or both sides.", true);
-//                            break;
-//                        case ConnectionsStatusCodes.STATUS_ERROR:
-//                            // The connection broke before it was able to be accepted.
-//                            sendPluginMessage("The connection broke before it was able to be accepted.", true);
-//                            break;
-//                        default:
-//                            // Unknown status code
-//                    }
-//                }
-//
-//                @Override
-//                public void onDisconnected(String endpointId) {
-//                    // We've been disconnected from this endpoint. No more data can be
-//                    // sent or received.
-//                }
-//            };
-
-//    private void startAdvertising() {
-////        String packageName = this.getClass().getPackage().toString();
-//        String packageName = "org.rti.tangerine";
-//        Log.d(TAG, "Advertising as: " + packageName);
-//        Context context = cordova.getActivity().getApplicationContext();
-//        AdvertisingOptions advertisingOptions =
-//                new AdvertisingOptions.Builder().setStrategy(STRATEGY).build();
-//        Nearby.getConnectionsClient(context)
-//                .startAdvertising(
-//                        mName, packageName, connectionLifecycleCallback, advertisingOptions)
-//                .addOnSuccessListener(
-//                        (Void unused) -> {
-//                            sendPluginMessage("We're advertising!", true);
-//                        })
-//                .addOnFailureListener(
-//                        (Exception e) -> {
-//                            // We were unable to start advertising.
-//                            sendPluginMessage(" We were unable to start advertising.", true);
-//                        });
-//    }
-//
-//    private void startDiscovery() {
-//        DiscoveryOptions discoveryOptions =
-//                new DiscoveryOptions.Builder().setStrategy(STRATEGY).build();
-//        Context context = cordova.getActivity().getApplicationContext();
-//        Nearby.getConnectionsClient(context)
-//                .startDiscovery(mName, endpointDiscoveryCallback, discoveryOptions)
-//                .addOnSuccessListener(
-//                        (Void unused) -> {
-//                            sendPluginMessage("We're discovering!", true);
-//                        })
-//                .addOnFailureListener(
-//                        (Exception e) -> {
-//                            // We're unable to start discovering.
-//                            sendPluginMessage(" We were unable to start discovery.", true);
-//                        });
-//    }
-//
-//    private final EndpointDiscoveryCallback endpointDiscoveryCallback =
-//            new EndpointDiscoveryCallback() {
-//                @Override
-//                public void onEndpointFound(String endpointId, DiscoveredEndpointInfo info) {
-//                    String message = String.format(
-//                            "onEndpointFound(endpointId=%s, serviceId=%s, endpointName=%s)",
-//                            endpointId, info.getServiceId(), info.getEndpointName());
-//                    sendPluginMessage(message, true);
-//                    if (mName.equals(info.getServiceId())) {
-//                        Endpoint endpoint = new Endpoint(endpointId, info.getEndpointName());
-//                        mDiscoveredEndpoints.put(endpointId, endpoint);
-//                        onEndpointDiscovered(endpoint);
-//                    }
-//                    // An endpoint was found. We request a connection to it.
-//                    Context context = cordova.getActivity().getApplicationContext();
-//                    Nearby.getConnectionsClient(context)
-//                            .requestConnection(mName, endpointId, connectionLifecycleCallback)
-//                            .addOnSuccessListener(
-//                                    (Void unused) -> {
-//                                        // We successfully requested a connection. Now both sides
-//                                        // must accept before the connection is established.
-//                                        sendPluginMessage("We successfully requested a connection.", true);
-//                                    })
-//                            .addOnFailureListener(
-//                                    (Exception e) -> {
-//                                        // Nearby Connections failed to request the connection.
-//                                        sendPluginMessage("Nearby Connections failed to request the connection.", true);
-//                                    });
-//                }
-//
-//                @Override
-//                public void onEndpointLost(String endpointId) {
-//                    // A previously discovered endpoint has gone away.
-//                    sendPluginMessage("A previously discovered endpoint has gone away - id: " + endpointId, true);
-//
-//                }
-//            };
 
     /**
      * Sends a message to the PluginResult and debug log.
@@ -495,7 +308,7 @@ public class TangyP2PPlugin extends CordovaPlugin
             if(!PermissionHelper.hasPermission(this, p))
             {
 //                LOG.d(TAG, "hasPermisssion() is false for: " + p);
-                LOG.d(TAG, "hasPermisssion() is false for: " + p + " but we will let this pass for now. TODO fisx.");
+                LOG.d(TAG, "hasPermisssion() is false for: " + p + " but we will let this pass for now. TODO fix.");
 //                return false;
             }
         }
@@ -639,7 +452,9 @@ public class TangyP2PPlugin extends CordovaPlugin
             new PayloadCallback() {
                 @Override
                 public void onPayloadReceived(String endpointId, Payload payload) {
-                    logD(String.format("onPayloadReceived(endpointId=%s, payload=%s)", endpointId, payload));
+//                    logD(String.format("onPayloadReceived from (endpointId=%s)", endpointId));
+                    String pluginMessage = String.format("onPayloadReceived from (endpointId=%s)", endpointId);
+                    Log.d(TAG, pluginMessage);
                     onReceive(mEstablishedConnections.get(endpointId), payload);
                 }
 
@@ -1184,7 +999,7 @@ public class TangyP2PPlugin extends CordovaPlugin
 //            // payload. You can check the payload type with payload.getType().
             byte[] receivedBytes = payload.asBytes();
             String message = new String(receivedBytes);
-            TangyP2PPlugin.sendPluginMessage("Data transfer message: " + message, true, cbContext, TAG);
+            TangyP2PPlugin.sendPluginMessage(message, true, cbContext, TAG);
     }
 
 }
