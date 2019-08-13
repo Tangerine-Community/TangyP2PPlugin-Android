@@ -54,6 +54,7 @@ import org.apache.cordova.PermissionHelper;
 import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -61,7 +62,6 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
@@ -82,7 +82,6 @@ public class TangyP2PPlugin extends CordovaPlugin
     public PluginResult pluginResult;
 
     public HashMap<String, Object> responses;
-    public NanoHTTPDWebserver nanoHTTPDWebserver;
 
     private Endpoint endpoint = null;
 
@@ -163,7 +162,7 @@ public class TangyP2PPlugin extends CordovaPlugin
             {
 //                PluginResult r = new PluginResult(PluginResult.Status.OK);
 //                cbContext.sendPluginResult(r);
-                sendPluginMessage(PluginResult.Status.OK.toString(), true);
+                sendPluginMessage(PluginResult.Status.OK.toString(), true, "log", null);
                 return true;
             }
             else {
@@ -187,7 +186,7 @@ public class TangyP2PPlugin extends CordovaPlugin
                 String message = "Requesting permissions";
 //                Log.i(TAG, message);
                 PermissionHelper.requestPermissions(this, 0, permissions);
-                sendPluginMessage(message, true);
+                sendPluginMessage(message, true, "log", null);
             }
             return true;
         }
@@ -205,7 +204,7 @@ public class TangyP2PPlugin extends CordovaPlugin
                 String message = "Requesting permissions";
 //                Log.i(TAG, message);
                 PermissionHelper.requestPermissions(this, 0, permissions);
-                sendPluginMessage(message, true);
+                sendPluginMessage(message, true, "log", null);
             }
             return true;
         } else if ("startDiscovery".equals(action)) {
@@ -235,7 +234,7 @@ public class TangyP2PPlugin extends CordovaPlugin
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
-                        sendPluginMessage("sending payloadString beginning with: " + payloadString.subSequence(0,30), true);
+                        sendPluginMessage("sending payloadString beginning with: " + payloadString.subSequence(0,30), true, "log", null);
                         byte[] payloadBytes = payloadString.getBytes();
                         Payload bytesPayload = Payload.fromBytes(payloadBytes);
                         send(bytesPayload);
@@ -255,10 +254,24 @@ public class TangyP2PPlugin extends CordovaPlugin
      * Sends a message to the PluginResult and debug log.
      * @param pluginMessage
      * @param keepCallback
+     * @param messageType
+     * @param object
      */
-    private void sendPluginMessage(String pluginMessage, boolean keepCallback) {
+    private void sendPluginMessage(String pluginMessage, boolean keepCallback, String messageType, JSONObject object) {
         Log.d(TAG, pluginMessage);
-        pluginResult = new PluginResult(PluginResult.Status.OK, pluginMessage);
+//        Message messageObject = new Message(messageType,pluginMessage, object);
+        JSONObject jsonObject = new JSONObject();
+        try {
+            jsonObject.put("messageType", messageType);
+            jsonObject.put("message", pluginMessage);
+            jsonObject.put("object", object);
+        } catch (JSONException e) {
+            Log.e(TAG, "sendPluginMessage Error: " + e.getMessage());
+            e.printStackTrace();
+        }
+        String jsonString = jsonObject.toString();
+        Log.d(TAG, "jsonString: "  + jsonString);
+        pluginResult = new PluginResult(PluginResult.Status.OK, jsonObject);
         pluginResult.setKeepCallback(keepCallback);
         cbContext.sendPluginResult(pluginResult);
     }
@@ -267,13 +280,27 @@ public class TangyP2PPlugin extends CordovaPlugin
      * Sends a message to the PluginResult and debug log.
      * @param pluginMessage
      * @param keepCallback
+     * @param messageType
+     * @param object
      */
-    public static void sendPluginMessage(String pluginMessage, boolean keepCallback, CallbackContext cbContext, String tag) {
+    public static void sendPluginMessage(String pluginMessage, boolean keepCallback, CallbackContext cbContext, String tag, String messageType, JSONObject object) {
         if (tag == null) {
             tag = TAG;
         }
         Log.d(tag, pluginMessage);
-        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, pluginMessage);
+//        Message messageObject = new Message(messageType,pluginMessage, object);
+        JSONObject jsonObject = new JSONObject();
+        try {
+            jsonObject.put("messageType", messageType);
+            jsonObject.put("message", pluginMessage);
+            jsonObject.put("object", object);
+        } catch (JSONException e) {
+            Log.e(tag, "sendPluginMessage Error: " + e.getMessage());
+            e.printStackTrace();
+        }
+        String jsonString = jsonObject.toString();
+        Log.d(tag, "jsonString: "  + jsonString);
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, jsonObject);
         pluginResult.setKeepCallback(keepCallback);
         cbContext.sendPluginResult(pluginResult);
     }
@@ -331,53 +358,6 @@ public class TangyP2PPlugin extends CordovaPlugin
             return false;
         }
         return true;
-    }
-
-    /**
-     * Starts the server
-     * @param args
-     * @param callbackContext
-     */
-    private void start(JSONArray args, CallbackContext callbackContext) throws JSONException, IOException {
-        int port = 8080;
-
-        if (args.length() == 1) {
-            port = args.getInt(0);
-        }
-
-        if (this.nanoHTTPDWebserver != null){
-            callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Server already running"));
-            return;
-        }
-
-        try {
-            this.nanoHTTPDWebserver = new NanoHTTPDWebserver(port, this);
-            this.nanoHTTPDWebserver.start();
-        }catch (Exception e){
-            callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, e.getMessage()));
-            return;
-        }
-
-        Log.d(
-                this.getClass().getName(),
-                "Server is running on: " +
-                        this.nanoHTTPDWebserver.getHostname() + ":" +
-                        this.nanoHTTPDWebserver.getListeningPort()
-        );
-        callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK));
-    }
-
-    /**
-     * Stops the server
-     * @param args
-     * @param callbackContext
-     */
-    private void stop(JSONArray args, CallbackContext callbackContext) throws JSONException {
-        if (this.nanoHTTPDWebserver != null) {
-            this.nanoHTTPDWebserver.stop();
-            this.nanoHTTPDWebserver = null;
-        }
-        callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK));
     }
 
     /**
@@ -467,20 +447,20 @@ public class TangyP2PPlugin extends CordovaPlugin
             // after the call to onPayloadReceived().
             switch (update.getStatus()) {
                 case PayloadTransferUpdate.Status.SUCCESS:
-                    TangyP2PPlugin.sendPluginMessage("Data transfer completed! ", true, cbContext, TAG);
+                    TangyP2PPlugin.sendPluginMessage("Data transfer completed! ", true, cbContext, TAG, "log", null);
                     break;
                 case PayloadTransferUpdate.Status.FAILURE:
-                    TangyP2PPlugin.sendPluginMessage("Data transfer failure.", true, cbContext, TAG);
+                    TangyP2PPlugin.sendPluginMessage("Data transfer failure.", true, cbContext, TAG, "log", null);
                     break;
                 case PayloadTransferUpdate.Status.CANCELED:
-                    TangyP2PPlugin.sendPluginMessage("Data transfer cancelled.", true, cbContext, TAG);
+                    TangyP2PPlugin.sendPluginMessage("Data transfer cancelled.", true, cbContext, TAG, "log", null);
                     break;
                 case PayloadTransferUpdate.Status.IN_PROGRESS:
                     // don't log, could be verbose.
                     break;
                 default:
                     // Unknown status code
-                    TangyP2PPlugin.sendPluginMessage("Data transfer update - unknown: " + update.getStatus(), true, cbContext, TAG);
+                    TangyP2PPlugin.sendPluginMessage("Data transfer update - unknown: " + update.getStatus(), true, cbContext, TAG, "log", null);
             }
                 }
             };
@@ -641,25 +621,25 @@ public class TangyP2PPlugin extends CordovaPlugin
     }
 
     protected void logV(String msg) {
-        sendPluginMessage(msg, true);
+        sendPluginMessage(msg, true, "log", null);
     }
 
     protected void logD(String msg) {
-        sendPluginMessage(msg, true);
+        sendPluginMessage(msg, true, "log", null);
     }
 
     protected void logW(String msg) {
-        sendPluginMessage(msg, true);
+        sendPluginMessage(msg, true, "log", null);
     }
 
     protected void logW(String msg, Throwable e) {
         e.printStackTrace();
         String error = e.getMessage();
-        sendPluginMessage(msg + " error: " + error, true);
+        sendPluginMessage(msg + " error: " + error, true, "log", null);
     }
 
     protected void logE(String msg, Throwable e) {
-        sendPluginMessage(msg, true);
+        sendPluginMessage(msg, true, "log", null);
     }
 
     private static String generateRandomName() {
@@ -962,9 +942,9 @@ public class TangyP2PPlugin extends CordovaPlugin
     }
 
     private void send(Payload payload, Set<String> endpoints) {
-        int count = endpoints.size();
-        Log.d(TAG, "Send: Number of endpoints: " + count);
-        Iterator<String> itr = endpoints.iterator();
+//        int count = endpoints.size();
+//        Log.d(TAG, "Send: Number of endpoints: " + count);
+//        Iterator<String> itr = endpoints.iterator();
 //        while(itr.hasNext()){
 //            String endPoint = itr.next();
 //            Log.d(TAG, "Sending to endpoint: " + endPoint);
@@ -982,7 +962,7 @@ public class TangyP2PPlugin extends CordovaPlugin
                         new OnSuccessListener<Void>() {
                             @Override
                             public void onSuccess(Void unusedResult) {
-                                sendPluginMessage("Payload was sent!", true);
+                                sendPluginMessage("Payload was sent!", true, "log", null);
                             }
                         });
 
@@ -999,7 +979,13 @@ public class TangyP2PPlugin extends CordovaPlugin
 //            // payload. You can check the payload type with payload.getType().
             byte[] receivedBytes = payload.asBytes();
             String message = new String(receivedBytes);
-            TangyP2PPlugin.sendPluginMessage(message, true, cbContext, TAG);
+        try {
+            JSONObject object = new JSONObject(message);
+            TangyP2PPlugin.sendPluginMessage(message, true, cbContext, TAG, "payload", object);
+        } catch (JSONException e) {
+            TangyP2PPlugin.sendPluginMessage(e.getMessage(), true, cbContext, TAG, "log", null);
+
+        }
     }
 
 }

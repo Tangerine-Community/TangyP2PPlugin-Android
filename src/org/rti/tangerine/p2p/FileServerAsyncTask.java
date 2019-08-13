@@ -6,7 +6,6 @@ import android.os.Environment;
 import android.util.Log;
 
 import org.apache.cordova.CallbackContext;
-import org.apache.cordova.LOG;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -43,7 +42,7 @@ public class FileServerAsyncTask extends AsyncTask<Void, Void, String> {
             ServerSocket serverSocket = new ServerSocket(port);
             Socket client = serverSocket.accept();
             String message = "Accepting connections on the server at " + port;
-            TangyP2PPlugin.sendPluginMessage(message, true, cbContext, TAG);
+            TangyP2PPlugin.sendPluginMessage(message, true, cbContext, TAG, "log", null);
 
             /**
              * If this code is reached, a client has connected and transferred data
@@ -64,7 +63,7 @@ public class FileServerAsyncTask extends AsyncTask<Void, Void, String> {
 //            return f.getAbsolutePath();
             return message;
         } catch (IOException e) {
-            TangyP2PPlugin.sendPluginMessage(e.getMessage(), true, cbContext, TAG);
+            TangyP2PPlugin.sendPluginMessage(e.getMessage(), true, cbContext, TAG, "log", null);
             return null;
         }
     }
@@ -106,7 +105,7 @@ public class FileServerAsyncTask extends AsyncTask<Void, Void, String> {
 //            intent.setDataAndType(Uri.parse("file://" + result), "image/*");
 //            context.startActivity(intent);
             String message = "Here is the result: " + result;
-            TangyP2PPlugin.sendPluginMessage(message, true, cbContext, TAG);
+            TangyP2PPlugin.sendPluginMessage(message, true, cbContext, TAG, "log", null);
         }
     }
 //
